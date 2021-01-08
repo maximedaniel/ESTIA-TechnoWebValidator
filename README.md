@@ -1,8 +1,9 @@
+Tested on Windows 8
 
-# requirements (tested on Windows 8 only)
+# Requirements
 
-Python >=3.6
-Pip3 >=20.3
+- python >=3.6
+- pip3 >=20.3
 
 # Installation
 
