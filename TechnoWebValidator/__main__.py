@@ -157,7 +157,7 @@ def validate(archiveName):
     studentCodeValidated = [True for x in range(len(students))]
 
     verbose()
-    verbose('Looking for the assignments of %s students...' % nbTotalAssignment)
+    verbose('Looking for the assignment of %s students...' % nbTotalAssignment)
 
     # check assignment for each student
     for entry in os.scandir(pathToFolder):
@@ -205,7 +205,7 @@ def validate(archiveName):
     for directoryToDelete in directoriesToDelete:
         shutil.rmtree(directoryToDelete)
 
-    verbose("Validating HTML and CSS files in each assignment...")
+    verbose("Validating HTML and CSS files of each assignment...")
     # Entering each assignment to validate HTML and CSS files
     for entry in os.scandir(pathToFolder):
         if entry.is_dir(): 
@@ -291,7 +291,7 @@ def validate(archiveName):
                 notOk(student)
 
     studentPassed = [(found and validated) for found,validated in zip(studentAssignmentFound, studentCodeValidated)]
-    verbose("%s/%s assignments with valid HTML and CSS files (see 'assignments/<student>.log' for HTML and CSS errors)." %(sum(studentPassed), len(studentCodeValidated)))
+    verbose("%s/%s assignments with valid HTML and CSS files (see '%s/<student>.log' for HTML and CSS errors)." %(sum(studentPassed), len(studentCodeValidated), pathToFolder))
 
 if __name__ == '__main__':
     if len(sys.argv) != 2 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
