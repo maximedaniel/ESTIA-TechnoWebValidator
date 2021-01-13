@@ -7,6 +7,7 @@ import time
 import json
 import urllib.parse
 import subprocess
+import xlrd
 from colorama import init, Fore, Back, Style
 init()
 
@@ -72,7 +73,7 @@ html_validator_url = 'https://validator.w3.org/nu/?out=json'
 css_validator_url = 'https://validator.w3.org/nu/?out=json'
 delayBetweenRequest = 2 #s
 
-def validate(archiveName):
+def validate(archiveName, StudentListExcelName=""):
     currDir = os.path.split(archiveName)[0]
     folderName = 'assignments'
     pathToFolder = os.path.join(currDir, folderName)
@@ -120,6 +121,18 @@ def validate(archiveName):
         f.write("%s %s \n" % (topic, msg))
         f.close()
 
+    # Extract student names if EXCEL file given
+    
+    if StudentListExcelName:
+        try:
+            studentListSheets = xlrd.open_workbook(StudentListExcelName)
+            studentListSheet = studentListSheets.sheet_by_index(0)
+            for i in range(1, studentListSheet.nrows):
+                    students.append("%s %s" % (studentListSheet.cell_value(i, 2), studentListSheet.cell_value(i, 1)))
+        except:
+                err("'%s' could not be parsed as an EXCEL file." % StudentListExcelName)
+                exit(1)
+
     verbose()
     verbose("Extracting archive '%s' into folder '%s'..." %(archiveName, pathToFolder))
     #check if archive exists in current directory
@@ -131,10 +144,10 @@ def validate(archiveName):
         try:
             with zipfile.ZipFile(archiveName,"r") as zip_ref:
                 zip_ref.extractall(pathToFolder)
-        except:
-            err("'%s' is not a ZIP archive." % archiveName)
-            exit(1)
-
+        except IOError:
+            err("unable to read ZIP archive '%s'." % archiveName)
+        except zipfile.BadZipfile:
+            err("unable to extract ZIP archive '%s'." % archiveName)
     else :
         err("archive '%s' does not exist in current directory." % archiveName)
         exit(1)
@@ -157,14 +170,14 @@ def validate(archiveName):
     studentCodeValidated = [True for x in range(len(students))]
 
     verbose()
-    verbose('Looking for the assignment of %s students...' % nbTotalAssignment)
+    verbose('Looking for the assignment of %s students...' % len(students))
 
     # check assignment for each student
     for entry in os.scandir(pathToFolder):
         if entry.is_dir():
             receivedAssignment = False
             for i, student in enumerate(students):
-                if entry.name.startswith(student):
+                if student == entry.name.split('_')[0]:
                     receivedAssignment = studentAssignmentFound[i] = True
                     nbAssignement+=1
             if not receivedAssignment:
@@ -175,7 +188,7 @@ def validate(archiveName):
         ok(students[i]) if assignmentFound else notOk(students[i])
         time.sleep(0.1)
 
-    verbose("%s/%s student assignements found." % (nbAssignement, nbTotalAssignment))
+    verbose("%s/%s student assignements found." % (nbAssignement, len(students)))
     verbose()
 
     # delete student assignments that are not yours to evaluate
@@ -190,8 +203,13 @@ def validate(archiveName):
                 # get file path
                 filePath = os.path.join(root, fileName)
                 # extract archive into root folder
-                with zipfile.ZipFile(filePath,"r") as zip_ref:
-                    zip_ref.extractall(root)
+                try:
+                    with zipfile.ZipFile(filePath,"r") as zip_ref:
+                        zip_ref.extractall(root)
+                except IOError:
+                    err("unable to read ZIP archive '%s'." % filePath)
+                except zipfile.BadZipfile:
+                    err("unable to extract ZIP archive '%s'." % filePath)
                 # remove archive
                 os.remove(filePath)
 
@@ -248,8 +266,11 @@ def validate(archiveName):
                                             line = file + ':'
                                             line += ('%(type)s: %(message)s' % msg)
                                             f.write(line + '\n')
-                            except:
-                                verbose("error while parsing file.")
+                            except SyntaxError:
+                                verbose("Syntax error in JSON file '%s'." % ans)
+                            except IOError:
+                                verbose("Error while parsing JSON file '%s'." % ans)
+
                             time.sleep(delayBetweenRequest)
 
                         if filePath.endswith('.css'):
@@ -280,8 +301,10 @@ def validate(archiveName):
                                             line = file + ':'
                                             line += ('%(type)s: %(message)s' % msg)
                                             f.write(line + '\n')
-                            except:
-                                verbose("error while parsing file.")
+                            except SyntaxError:
+                                verbose("Syntax error in JSON file '%s'." % ans)
+                            except IOError:
+                                verbose("Error while parsing JSON file '%s'." % ans)
                             time.sleep(delayBetweenRequest)
 
             if studentCodeValidated[studentIndex] :
@@ -291,12 +314,17 @@ def validate(archiveName):
                 notOk(student)
 
     studentPassed = [(found and validated) for found,validated in zip(studentAssignmentFound, studentCodeValidated)]
-    verbose("%s/%s assignments with valid HTML and CSS files (see '%s/<student>.log' for HTML and CSS errors)." %(sum(studentPassed), len(studentCodeValidated), pathToFolder))
+    verbose("%s/%s assignments with valid HTML and CSS files (see '%s/<student>.log' for W3C errors)." %(sum(studentPassed), len(studentCodeValidated), pathToFolder))
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
-        print('usage: %s <archive>.zip' % os.path.basename(sys.argv[0]))
+    if len(sys.argv) < 2 or len(sys.argv) > 3 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
+        print('usage: %s <moodle_student_assignments>.zip [<pegasus_student_names>.xls]' % os.path.basename(sys.argv[0]))
         exit(1)
-    else:
+
+    if len(sys.argv) == 3:
+        validate(sys.argv[1], sys.argv[2])
+        exit(0)   
+
+    if len(sys.argv) == 2:
         validate(sys.argv[1])
         exit(0)
