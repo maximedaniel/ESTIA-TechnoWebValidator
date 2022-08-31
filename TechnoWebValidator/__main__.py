@@ -1,5 +1,7 @@
 
 import os
+import random
+from tkinter import E
 import zipfile
 import shutil
 import sys
@@ -71,9 +73,12 @@ students = [
 
 html_validator_url = 'https://validator.w3.org/nu/?out=json'
 css_validator_url = 'https://validator.w3.org/nu/?out=json'
-delayBetweenRequest = 2 #s
+
+minDelayBetweenRequest = 2.0 #s
+maxDelayBetweenRequest = 5.0 #s
 
 def validate(archiveName, StudentListExcelName=""):
+    os.system("chcp 65001")
     currDir = os.path.split(archiveName)[0]
     folderName = 'assignments'
     pathToFolder = os.path.join(currDir, folderName)
@@ -81,43 +86,43 @@ def validate(archiveName, StudentListExcelName=""):
     # create empty result file
     resultFileName = 'results.log'
     pathToResultFileName =  os.path.join(currDir, resultFileName)
-    f = open(pathToResultFileName, "w+")
+    f = open(pathToResultFileName, "w+", encoding="utf-8")
     f.write("")
     f.close()
 
     def verbose(msg=""):
         print(msg)
-        f = open(pathToResultFileName, "a+")
+        f = open(pathToResultFileName, "a+", encoding="utf-8")
         f.write(" %s \n" % msg)
         f.close()
 
     def info(msg = "", topic = " INFO "):
         print("%s%s%s%s %s" % (Back.WHITE, Fore.BLACK, topic, Style.RESET_ALL, msg))
-        f = open(pathToResultFileName, "a+")
+        f = open(pathToResultFileName, "a+", encoding="utf-8")
         f.write("%s %s \n" % (topic, msg))
         f.close()
 
     def warn(msg = "", topic = " WARNING "):
         print("%s%s%s%s %s" % (Back.YELLOW, Fore.BLACK, topic, Style.RESET_ALL, msg))
-        f = open(pathToResultFileName, "a+")
+        f = open(pathToResultFileName, "a+", encoding="utf-8")
         f.write("%s %s \n" % (topic, msg))
         f.close()
 
     def ok(msg = "", topic = " O ", nbSpace = 0):
         print("%*s%s%s%s %s" % (nbSpace, Back.GREEN, Fore.BLACK, topic, Style.RESET_ALL, msg))
-        f = open(pathToResultFileName, "a+")
+        f = open(pathToResultFileName, "a+", encoding="utf-8")
         f.write("%s %s \n" % (topic, msg))
         f.close()
 
     def notOk(msg = "", topic = " X ", nbSpace = 0):
         print("%*s%s%s%s %s" % (nbSpace, Back.RED, Fore.BLACK, topic, Style.RESET_ALL, msg))
-        f = open(pathToResultFileName, "a+")
+        f = open(pathToResultFileName, "a+", encoding="utf-8")
         f.write("%s %s \n" % (topic, msg))
         f.close()
 
     def err(msg = "", topic = " ERROR "):
         print("%s%s%s%s %s" % (Back.RED, Fore.BLACK, topic, Style.RESET_ALL, msg))
-        f = open(pathToResultFileName, "a+")
+        f = open(pathToResultFileName, "a+", encoding="utf-8")
         f.write("%s %s \n" % (topic, msg))
         f.close()
 
@@ -195,6 +200,9 @@ def validate(archiveName, StudentListExcelName=""):
     for assignmentPath in assignementsToDelete: 
         shutil.rmtree(assignmentPath)
 
+    
+    verbose()
+    verbose('Looking for archive to unzip inside the assignment of %s students...' % len(students))
     # Entering each assignment to unzip existing archive
     for root, dirs, files in os.walk(pathToFolder):
         for fileName in files:
@@ -231,7 +239,7 @@ def validate(archiveName, StudentListExcelName=""):
             studentIndex = students.index(student)
             pathToStudentFileName = os.path.join(pathToFolder, student + '.log')
             filelist = []
-            with open(pathToStudentFileName, 'w+') as f:
+            with open(pathToStudentFileName, 'w+', encoding="utf-8") as f:
                 for root, dirs, files in os.walk(entry.path):
                     for file in files:
                         #append the file name to the list
@@ -248,7 +256,8 @@ def validate(archiveName, StudentListExcelName=""):
                                 try :
                                     ans = subprocess.check_output(cmd, encoding='utf-8')
                                     success = True
-                                except:
+                                except Exception as e:
+                                    print(e)
                                     err('W3C request failed. Retry in 60 secs...')
                                     time.sleep(60)
 
@@ -271,7 +280,7 @@ def validate(archiveName, StudentListExcelName=""):
                             except IOError:
                                 verbose("Error while parsing JSON file '%s'." % ans)
 
-                            time.sleep(delayBetweenRequest)
+                            time.sleep(random.uniform(minDelayBetweenRequest, maxDelayBetweenRequest))
 
                         if filePath.endswith('.css'):
                             filelist.append(filePath)
@@ -284,7 +293,8 @@ def validate(archiveName, StudentListExcelName=""):
                                 try :
                                     ans = subprocess.check_output(cmd, encoding='utf-8')
                                     success = True
-                                except:
+                                except Exception as e:
+                                    print(e)
                                     err('W3C request failed. Retry in 60 secs...')
                                     time.sleep(60)
                             try :
@@ -305,7 +315,7 @@ def validate(archiveName, StudentListExcelName=""):
                                 verbose("Syntax error in JSON file '%s'." % ans)
                             except IOError:
                                 verbose("Error while parsing JSON file '%s'." % ans)
-                            time.sleep(delayBetweenRequest)
+                            time.sleep(random.uniform(minDelayBetweenRequest, maxDelayBetweenRequest))
 
             if studentCodeValidated[studentIndex] :
                 os.remove(pathToStudentFileName)
